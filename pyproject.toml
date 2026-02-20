@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ruf"
+version = "0.1.0"
+description = "AI Security Auditor for Smart Contracts & Blockchains"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=2.0.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+ruf = "ruf.cli:cli"
+
+[tool.setuptools.packages.find]
+include = ["ruf*"]
