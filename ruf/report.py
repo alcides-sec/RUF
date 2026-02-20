@@ -107,12 +107,10 @@ def generate_markdown(report: AuditReport) -> str:
         "This audit was conducted using RUF's multi-pass AI pipeline:",
         "",
         "1. **Phase Planning** — codebase analysed and organised into logical audit phases.",
-        "2. **Per-Phase Audit (3 passes)**:",
+        "2. **Per-Phase Audit (2 passes)**:",
         "   - *Pass 1 — Discovery*: systematic identification of security issues.",
-        "   - *Pass 2 — Deep Dive*: advanced attack-vector analysis.",
-        "   - *Pass 3 — Validation*: false-positive elimination & severity calibration.",
-        "3. **Holistic Review** — cross-phase analysis for system-level vulnerabilities.",
-        "4. **Severity Validation** — skeptical re-evaluation of all ratings.",
+        "   - *Pass 3 — Validation*: false-positive elimination & severity calibration (Pass 2 deep-dive skipped).",
+        "3. **Final Review (global)** — cross-phase sanity checks plus skeptical validation (dedupe + severity calibration).",
         "",
     ]
 

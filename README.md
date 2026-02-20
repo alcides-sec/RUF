@@ -1,27 +1,24 @@
-# RUF — AI Security Auditor for Smart Contracts
+# RUF — Multi-pass AI Security Auditor
 
-RUF is a multi-pass AI audit pipeline that reviews smart-contract codebases with the thoroughness of a senior auditor. It uses OpenAI-compatible models with tool calling to autonomously navigate, read, and analyse source files.
+RUF is a multi-pass AI audit pipeline that reviews codebases with the thoroughness of a senior auditor. It is optimized for smart contracts and blockchain projects, but the same pipeline can be used for other software audits by adjusting scope (file extensions) and prompts.
 
 ## How It Works
 
 ```
-Codebase ──▸ Phase Planning ──▸ Per-Phase Audit (×3 passes) ──▸ Holistic Review ──▸ Severity Validation ──▸ Report
+Codebase ──▸ Phase Planning ──▸ Per-Phase Audit (×2 passes) ──▸ Final Review (global) ──▸ Report
 ```
 
 1. **Phase Planning** — The AI analyses project structure and groups files into logical audit phases (e.g. "Core Protocol", "Access Control", "Oracle Integration"). It explains *why* each grouping was chosen and notes cross-phase dependencies.
 
-2. **Per-Phase Audit (3 passes each)**
+2. **Per-Phase Audit (2 passes each)**
    | Pass | Goal |
    |------|------|
    | **Discovery** | Read every file line-by-line, identify all potential issues |
-   | **Deep Dive** | Re-examine with adversarial mindset, find subtle / chained attacks |
-   | **Validation** | Eliminate false positives, calibrate severities |
+   | **Validation** | Eliminate false positives, deduplicate, calibrate severities |
 
-   All three passes share memory — each execution sees findings from the previous ones.
+   Both passes share context — validation reviews and prunes the discovery candidates for the same phase.
 
-3. **Holistic Review** — Cross-phase analysis to catch system-level vulnerabilities that per-phase audits miss (cross-contract reentrancy, privilege escalation chains, economic attacks).
-
-4. **Severity Validation** — A skeptical final pass challenges every severity rating against realistic exploitability and impact.
+3. **Final Review (global)** — A single final stage that combines cross-phase sanity checks with skeptical validation (dedupe + false positives + severity calibration) and outputs the final client-ready finding set.
 
 ## Quick Start
 
@@ -33,7 +30,7 @@ pip install -e .
 export OPENAI_API_KEY="sk-..."
 
 # Run an audit
-ruf audit ./path/to/contracts
+ruf audit ./path/to/codebase
 
 # Just scan the project (no audit)
 ruf scan ./path/to/contracts
@@ -54,7 +51,6 @@ CLI flags override environment variables:
 ```bash
 ruf audit ./contracts \
     --model gpt-4o \
-    --api-key sk-... \
     --output ./reports \
     --temperature 0.1
 ```
@@ -71,11 +67,17 @@ Each finding includes:
 - Category, file path, line numbers
 - Description, impact assessment, recommendation
 - Proof of concept (when applicable)
-- Severity validation notes from the skeptical review
+- A code snippet in the Markdown report (for quick review)
 
 ## Supported Languages
 
-Solidity (`.sol`), Vyper (`.vy`), Rust (`.rs`), Move (`.move`), Cairo (`.cairo`), plus config files (`.toml`, `.yaml`, `.yml`).
+By default, RUF audits smart-contract ecosystems and common supporting code:
+
+- Solidity (`.sol`), Vyper (`.vy`), Rust (`.rs`), Move (`.move`), Cairo (`.cairo`)
+- JavaScript/TypeScript (`.js`, `.ts`)
+- Configs (`.toml`, `.yaml`, `.yml`)
+
+To audit other codebases (e.g. backend services, apps), extend `Config.supported_extensions` in `ruf/config.py` and adapt prompts in `ruf/prompts.py` to your threat model.
 
 ## Architecture
 
@@ -86,6 +88,7 @@ ruf/
 ├── models.py       # Issue, Phase, AuditReport data models
 ├── navigator.py    # File-system tools (read, search, outline)
 ├── ai_client.py    # OpenAI client with tool-calling loop
+├── responses_client.py # Responses API wrapper + telemetry
 ├── memory.py       # Cross-execution memory management
 ├── pipeline.py     # Main audit orchestrator
 ├── prompts.py      # System prompts for each stage

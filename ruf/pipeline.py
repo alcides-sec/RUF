@@ -169,7 +169,7 @@ class AuditPipeline:
         return selected, parallelism
 
     def _execute_phases_in_parallel_waves(self, phases: list[Phase], parallelism: int) -> None:
-        """Run pass 1 for all phases, then pass 2 for all, then pass 3 for all."""
+        """Run pass 1 for all phases, then pass 3 for all (skip pass 2)."""
         if not phases:
             console.print("\n[yellow]No phases selected — skipping per-phase audit.[/yellow]")
             return
@@ -179,7 +179,7 @@ class AuditPipeline:
         )
 
         # Wave Pass 1 — Discovery
-        _section("Wave Pass 1/3 — Discovery (all selected phases)", "green")
+        _section("Wave Pass 1/2 — Discovery (all selected phases)", "green")
         pass1, pass1_sessions = self._run_wave_pass(
             phases=phases,
             prompt_tpl=PASS_1_DISCOVERY,
@@ -194,29 +194,16 @@ class AuditPipeline:
             {k: [i.to_dict() for i in v] for k, v in pass1.items()},
         )
 
-        # Wave Pass 2 — Deep Dive
-        _section("Wave Pass 2/3 — Deep Dive (all selected phases)", "green")
-        pass2, pass2_sessions = self._run_wave_pass(
-            phases=phases,
-            prompt_tpl=PASS_2_DEEP_DIVE,
-            pass_num=2,
-            previous_map=pass1,
-            previous_sessions=pass1_sessions,
-            include_code=False,
-            parallelism=parallelism,
-        )
-        self._save_checkpoint(
-            "pass2_deep_dive",
-            {k: [i.to_dict() for i in v] for k, v in pass2.items()},
-        )
+        # No Pass 2 — Deep Dive (skipped for speed)
+        pass2: dict[str, list[Issue]] = {}
 
         # Wave Pass 3 — Validation (false-positive pruning)
-        _section("Wave Pass 3/3 — Validation (all selected phases)", "green")
+        _section("Wave Pass 2/2 — Validation (Pass 3, all selected phases)", "green")
         validated, _validated_sessions = self._run_wave_validation(
             phases=phases,
             pass1=pass1,
             pass2=pass2,
-            previous_sessions=pass2_sessions,
+            previous_sessions=pass1_sessions,
             parallelism=parallelism,
         )
         self._save_checkpoint(
@@ -227,8 +214,7 @@ class AuditPipeline:
         # Merge validated results into memory in a stable order
         for idx, phase in enumerate(phases, 1):
             p1 = pass1.get(phase.name, [])
-            p2 = pass2.get(phase.name, [])
-            combined = p1 + p2
+            combined = p1
             final = validated.get(phase.name, [])
 
             confirmed = [i for i in final if i.status == IssueStatus.CONFIRMED]
